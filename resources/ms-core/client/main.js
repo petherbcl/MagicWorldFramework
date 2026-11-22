@@ -20,8 +20,8 @@ function onStorageEmpty() {
   closeView();
   retryTimer = setTimeout(() => { retryTimer = null; if (lastState !== null && lastState.status !== "ready") show(lastState); }, VIEW_RETRY_DELAY_MS);
 }
-// Before the session is ready the pause menu stays available, with the pages listed by the server (MS_LOCKED_MENU_PAGES)
-// held shut. The list comes in the session payload; `heldPages` is what this script currently holds, so it gives back
+// The pause menu stays available with the pages listed by the server (MS_LOCKED_MENU_PAGES) held shut, before and after the
+// session is ready (only a resource stop gives them back). The list comes in the session payload; `heldPages` is what this script currently holds, so it gives back
 // exactly that (also pages dropped from the list in a later payload).
 const heldPages = new Set();
 function setLockedPages(pages) {
@@ -43,7 +43,7 @@ function show(state) {
   if (state.status === "ready") {
     closeView();
     LocalPlayer.restorePlayerInput();
-    setLockedPages([]);
+    setLockedPages(state.lockedMenuPages);
     Game.setPauseMenuEnabled(true);
     Game.setActionScreenEnabled(true);
     Game.setToolWheelEnabled(true);
