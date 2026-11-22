@@ -37,23 +37,37 @@ function setLockedPages(pages) {
     catch (error) { console.log("[ms-core] menu page '" + page + "' lock failed: " + (error && error.message || error)); }
   }
 }
+// Game menus (and their keys) switched off by MS_DISABLED_GAME_MENUS. Before the session is ready the action screen and tool
+// wheel are always off, and the pause menu stays on (with its locked pages) unless the server lists it.
+function applyGameMenus(disabled, unauthenticated) {
+  const off = new Set(Array.isArray(disabled) ? disabled : []);
+  Game.setPauseMenuEnabled(!off.has("pauseMenu"));
+  Game.setActionScreenEnabled(!(unauthenticated || off.has("actionScreen")));
+  Game.setToolWheelEnabled(!(unauthenticated || off.has("toolWheel")));
+}
+// Ambient NPC crowd (MS_AMBIENT_POPULATION / MS_POPULATION_DENSITY). Client side only and reset when the session ends, so it is
+// applied on every session message; a failing call is logged and never blocks the flow.
+function applyPopulation(population) {
+  if (!population || typeof population.ambient !== "boolean" || typeof population.density !== "number") return;
+  try {
+    World.setAmbientPopulation(population.ambient);
+    World.setPopulationDensity(population.density);
+  } catch (error) { console.log("[ms-core] population switch failed: " + (error && error.message || error)); }
+}
 function show(state) {
   if (state.sessionId !== retrySessionId) { retrySessionId = state.sessionId; viewAttempt = 0; }
   lastState = state;
+  applyPopulation(state.population);
   if (state.status === "ready") {
     closeView();
     LocalPlayer.restorePlayerInput();
     setLockedPages(state.lockedMenuPages);
-    Game.setPauseMenuEnabled(true);
-    Game.setActionScreenEnabled(true);
-    Game.setToolWheelEnabled(true);
+    applyGameMenus(state.disabledGameMenus, false);
     return;
   }
   LocalPlayer.stopPlayerInput();
-  Game.setPauseMenuEnabled(true);
   setLockedPages(state.lockedMenuPages);
-  Game.setActionScreenEnabled(false);
-  Game.setToolWheelEnabled(false);
+  applyGameMenus(state.disabledGameMenus, true);
   if (view === null) {
     view = Web.createView("fw://resources/ms-core/client/ui/index.html", { focus: true });
     Web.on(view, "ready", () => { pageReady = true; flush(); });
@@ -107,6 +121,7 @@ Events.on("resourceStop", name => {
   if (name !== "ms-core") return;
   if (!collisionWanted) setCollision(true);
   closeView();
+  try { World.setAmbientPopulation(false); World.setPopulationDensity(1); } catch (error) { /* resource is stopping */ }
   LocalPlayer.restorePlayerInput();
   setLockedPages([]);
   Game.setPauseMenuEnabled(true);
