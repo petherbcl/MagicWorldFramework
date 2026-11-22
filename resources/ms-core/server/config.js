@@ -31,6 +31,19 @@ function parseRequired(value) {
   }
   return [...groups.values()];
 }
+const MENU_PAGES = Object.freeze(["inventory", "gear", "talents", "quests", "map", "mail", "collections", "challenges", "settings"]);
+const DEFAULT_LOCKED_MENU_PAGES = "inventory,gear,talents,quests,map,mail,collections,challenges";
+// Comma-separated pause menu pages kept shut before the session is ready (empty = none).
+function parseMenuPages(value) {
+  const pages = [];
+  for (const part of String(value).split(",")) {
+    const page = part.trim();
+    if (!page) continue;
+    if (!MENU_PAGES.includes(page)) throw new Error("Invalid MS_LOCKED_MENU_PAGES: " + page);
+    if (!pages.includes(page)) pages.push(page);
+  }
+  return Object.freeze(pages);
+}
 function loadConfig(env = process.env, options = {}) {
   // Explicit test environments stay isolated unless a file is requested.
   const envFile = options.envFile !== undefined ? options.envFile :
@@ -52,6 +65,7 @@ function loadConfig(env = process.env, options = {}) {
   return Object.freeze({
     // No database settings here: the connection belongs to ms-sql (resources/ms-sql/.env).
     serverKey, formUrl, requiredIdentifiers,
+    lockedMenuPages: parseMenuPages(env.MS_LOCKED_MENU_PAGES === undefined ? DEFAULT_LOCKED_MENU_PAGES : env.MS_LOCKED_MENU_PAGES),
     approvalTimeoutMs: integer(env, "MS_APPROVAL_TIMEOUT_SECONDS", 1800, 60, 86400) * 1000,
     accessPollMs: integer(env, "MS_ACCESS_POLL_SECONDS", 5, 1, 60) * 1000,
     maxSessions: 128,

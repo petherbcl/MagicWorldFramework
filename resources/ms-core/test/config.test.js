@@ -46,6 +46,10 @@ test("required identifiers are parsed, deduplicated and validated", () => {
   assert.deepEqual(loadConfig({}).requiredIdentifiers, []);
   assert.deepEqual(loadConfig({ MS_REQUIRED_IDENTIFIERS: " discordId, steamId,discordId " }).requiredIdentifiers, [["discordId"], ["steamId"]]);
   assert.deepEqual(loadConfig({ MS_REQUIRED_IDENTIFIERS: "discordId,steamId | epicId,epicId|steamId" }).requiredIdentifiers, [["discordId"], ["steamId", "epicId"]]);
+  assert.deepEqual(loadConfig({}).lockedMenuPages, ["inventory", "gear", "talents", "quests", "map", "mail", "collections", "challenges"]);
+  assert.deepEqual(loadConfig({ MS_LOCKED_MENU_PAGES: " map, mail,map " }).lockedMenuPages, ["map", "mail"]);
+  assert.deepEqual(loadConfig({ MS_LOCKED_MENU_PAGES: "" }).lockedMenuPages, []);
+  assert.throws(() => loadConfig({ MS_LOCKED_MENU_PAGES: "map,nope" }), /MS_LOCKED_MENU_PAGES/);
   assert.throws(() => loadConfig({ MS_REQUIRED_IDENTIFIERS: "steamId||epicId" }), /MS_REQUIRED_IDENTIFIERS/);
   assert.throws(() => loadConfig({ MS_REQUIRED_IDENTIFIERS: "discordName" }), /MS_REQUIRED_IDENTIFIERS/);
   assert.throws(() => loadConfig({ MS_REQUIRED_IDENTIFIERS: "ip" }), /MS_REQUIRED_IDENTIFIERS/);

@@ -31,7 +31,8 @@ function createCore({ repository, config, game, emit = () => {}, logger = consol
   function send(s) {
     if (!current(s)) return;
     game.send(s.player, "ms-core:session", { sessionId: s.sessionId, status: s.status, serverKey: config.serverKey,
-      userId: s.userId, allowlist: s.user?.allowlist || null, formUrl: formUrl(s.userId) });
+      userId: s.userId, allowlist: s.user?.allowlist || null, formUrl: formUrl(s.userId),
+      lockedMenuPages: config.lockedMenuPages || [] });
     if (s.status === "awaitingCredentialStorage" && s.newCredential) {
       game.send(s.player, "ms-core:credential", { sessionId: s.sessionId, serverKey: config.serverKey, credential: s.newCredential });
     }

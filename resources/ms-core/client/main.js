@@ -20,19 +20,38 @@ function onStorageEmpty() {
   closeView();
   retryTimer = setTimeout(() => { retryTimer = null; if (lastState !== null && lastState.status !== "ready") show(lastState); }, VIEW_RETRY_DELAY_MS);
 }
+// Before the session is ready the pause menu stays available, with the pages listed by the server (MS_LOCKED_MENU_PAGES)
+// held shut. The list comes in the session payload; `heldPages` is what this script currently holds, so it gives back
+// exactly that (also pages dropped from the list in a later payload).
+const heldPages = new Set();
+function setLockedPages(pages) {
+  const wanted = new Set(Array.isArray(pages) ? pages.filter(page => typeof page === "string") : []);
+  for (const page of [...heldPages]) {
+    if (wanted.has(page)) continue;
+    try { Game.setMenuPageEnabled(page, true); heldPages.delete(page); }
+    catch (error) { console.log("[ms-core] menu page '" + page + "' release failed: " + (error && error.message || error)); }
+  }
+  for (const page of wanted) {
+    if (heldPages.has(page)) continue;
+    try { Game.setMenuPageEnabled(page, false); heldPages.add(page); }
+    catch (error) { console.log("[ms-core] menu page '" + page + "' lock failed: " + (error && error.message || error)); }
+  }
+}
 function show(state) {
   if (state.sessionId !== retrySessionId) { retrySessionId = state.sessionId; viewAttempt = 0; }
   lastState = state;
   if (state.status === "ready") {
     closeView();
     LocalPlayer.restorePlayerInput();
+    setLockedPages([]);
     Game.setPauseMenuEnabled(true);
     Game.setActionScreenEnabled(true);
     Game.setToolWheelEnabled(true);
     return;
   }
   LocalPlayer.stopPlayerInput();
-  Game.setPauseMenuEnabled(false);
+  Game.setPauseMenuEnabled(true);
+  setLockedPages(state.lockedMenuPages);
   Game.setActionScreenEnabled(false);
   Game.setToolWheelEnabled(false);
   if (view === null) {
@@ -89,6 +108,7 @@ Events.on("resourceStop", name => {
   if (!collisionWanted) setCollision(true);
   closeView();
   LocalPlayer.restorePlayerInput();
+  setLockedPages([]);
   Game.setPauseMenuEnabled(true);
   Game.setActionScreenEnabled(true);
   Game.setToolWheelEnabled(true);
