@@ -55,6 +55,7 @@ function createCore({ repository, config, game, emit = () => {}, logger = consol
     if (s.game) { event("ms:playerLeftGame", { ...gameInfo(s), reason }); s.game = null; }
     sessions.delete(s.playerId);
     if (accounts.get(s.userId) === s) accounts.delete(s.userId);
+    clearEffects(s);
     try { game.cancel(s); } catch { logger.error("[ms-core] native cleanup failed"); }
     if (kickMessage) game.kick(s.player, kickMessage);
     const task = s.persisting.then(async id => {
@@ -163,6 +164,7 @@ function createCore({ repository, config, game, emit = () => {}, logger = consol
     catch (error) { if (current(s)) await detach(s, "accessCheckFailed", "Não foi possível verificar o acesso."); throw error; }
   }
   const identifierHelp = {
+    accountId: ["Conta ArcaneMP", "reinicia o jogo; a conta é criada pelo próprio jogo"],
     discordId: ["Discord", "abre a aplicação do Discord no PC (com sessão iniciada) antes de ligar"],
     steamId: ["Steam", "inicia o jogo pela Steam, com a Steam aberta e com sessão iniciada"],
     epicId: ["Epic Games", "inicia o jogo pela Epic Games Launcher, com sessão iniciada"],
@@ -241,8 +243,28 @@ function createCore({ repository, config, game, emit = () => {}, logger = consol
       if (up && outageSince !== null) { outageSince = null; logger.error("[ms-core] database available again: access checks resumed"); }
     } finally { checking = false; }
   }
+  // Shared player effects (invisible, no collision). Several resources may ask at once, so each request is keyed by an
+  // owner and the effect is on while at least one owner holds it; the native call only happens when the effective state flips.
+  const OWNER = /^[A-Za-z0-9:_.-]{1,64}$/;
+  function effect(playerId, kind, owner, active, apply) {
+    const s = session(playerId);
+    check(s.status === "ready" && typeof owner === "string" && OWNER.test(owner) && typeof active === "boolean", "INVALID_EFFECT");
+    const owners = (s.effects ||= { invisible: new Set(), noCollision: new Set() })[kind], before = owners.size > 0;
+    if (active) owners.add(owner); else owners.delete(owner);
+    const after = owners.size > 0;
+    if (before !== after) apply(s, after);
+    return after;
+  }
+  const applyInvisible = (s, on) => game.setVisible(s.player, !on, s);
+  const applyNoCollision = (s, on) => game.setCollision(s.player, !on);
+  // Session ending: give back whatever other resources took (the player may already be gone natively, so never throw).
+  function clearEffects(s) {
+    const e = s.effects; if (!e) return; s.effects = null;
+    try { if (e.invisible.size) applyInvisible(s, false); } catch { /* player already gone */ }
+    try { if (e.noCollision.size) applyNoCollision(s, false); } catch { /* player already gone */ }
+  }
   const api = Object.freeze({
-    version: "0.7.0",
+    version: "0.8.1",
     Users: Object.freeze({
       get: id => sessions.has(id) ? clone(snapshot(sessions.get(id))) : null,
       getOnlineById: id => accounts.has(String(id)) ? clone(snapshot(accounts.get(String(id)))) : null,
@@ -273,6 +295,11 @@ function createCore({ repository, config, game, emit = () => {}, logger = consol
       get: id => sessions.get(id)?.game ? clone(gameInfo(sessions.get(id))) : null,
       getByUserId: id => accounts.get(String(id))?.game ? clone(gameInfo(accounts.get(String(id)))) : null,
       isInGame: id => Boolean(sessions.get(id)?.game),
+      // Owner-keyed effects, only for a ready session. Returns whether the effect is now on (for any owner).
+      setInvisible: (playerId, owner, enabled) => effect(playerId, "invisible", owner, enabled, applyInvisible),
+      setNoCollision: (playerId, owner, enabled) => effect(playerId, "noCollision", owner, enabled, applyNoCollision),
+      isInvisible: id => (sessions.get(id)?.effects?.invisible.size || 0) > 0,
+      hasNoCollision: id => (sessions.get(id)?.effects?.noCollision.size || 0) > 0,
       getAll: () => [...sessions.values()].filter(s => s.game).map(s => clone(gameInfo(s))),
     }),
     Allowlist: Object.freeze({

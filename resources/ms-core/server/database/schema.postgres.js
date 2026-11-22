@@ -24,7 +24,7 @@ module.exports = Object.freeze([
  PRIMARY KEY(user_id,kind,value)
 )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS ms_connection_identifiers_unique_owner ON ms_connection_identifiers(kind,value)
- WHERE kind IN ('steamId','epicId','discordId','hardwareId')`,
+ WHERE kind IN ('accountId','steamId','epicId','discordId','hardwareId')`,
   `CREATE TABLE IF NOT EXISTS ms_bans (
  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES ms_users(id),reason TEXT NOT NULL,actor TEXT NOT NULL,
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),expires_at TIMESTAMPTZ,revoked_at TIMESTAMPTZ

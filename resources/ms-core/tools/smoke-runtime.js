@@ -56,7 +56,7 @@ async function main() {
     if(name!=="ms-smoke") return; const core=Exports.get("ms-core","Core");
     const sql=Exports.get("ms-sql","Sql");
     if(!sql || sql.dialect!=="postgres" || !sql.isReady()) throw new Error("Invalid ms-sql export");
-    if(core.version!=="0.7.0" || core.Users.isReady(12345)!==false || await core.Users.hasPermission(12345,"admin")!==false) throw new Error("Invalid core export");
+    if(core.version!=="0.8.1" || core.Users.isReady(12345)!==false || await core.Users.hasPermission(12345,"admin")!==false) throw new Error("Invalid core export");
     const characters=Exports.get("ms-character","Characters");
     if(!characters || characters.version!=="0.6.1" || characters.isPlaying(12345)!==false || characters.getSelected(12345)!==null) throw new Error("Invalid character export");
     const spawn=Exports.get("ms-spawn","Spawn");

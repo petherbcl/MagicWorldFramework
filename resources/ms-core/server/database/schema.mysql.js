@@ -32,7 +32,7 @@ module.exports = Object.freeze([
   `CREATE TABLE IF NOT EXISTS ms_connection_identifiers (
  user_id BIGINT NOT NULL,kind VARCHAR(32) ${BIN} NOT NULL,value VARCHAR(256) ${BIN} NOT NULL,
  first_seen_at ${TS},last_seen_at ${TS},
- owner_key VARCHAR(300) ${BIN} GENERATED ALWAYS AS (IF(kind IN ('steamId','epicId','discordId','hardwareId'),CONCAT(kind,':',value),NULL)) STORED,
+ owner_key VARCHAR(300) ${BIN} GENERATED ALWAYS AS (IF(kind IN ('accountId','steamId','epicId','discordId','hardwareId'),CONCAT(kind,':',value),NULL)) STORED,
  PRIMARY KEY(user_id,kind,value),
  UNIQUE KEY ms_connection_identifiers_unique_owner (owner_key),
  CONSTRAINT ms_connection_identifiers_user_fk FOREIGN KEY (user_id) REFERENCES ms_users(id)

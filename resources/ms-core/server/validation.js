@@ -1,6 +1,6 @@
 "use strict";
 
-const UNIQUE_IDENTIFIERS = Object.freeze(["steamId", "epicId", "discordId", "hardwareId"]);
+const UNIQUE_IDENTIFIERS = Object.freeze(["accountId", "steamId", "epicId", "discordId", "hardwareId"]);
 
 class CoreError extends Error {
   constructor(code, message = code) { super(message); this.name = "CoreError"; this.code = code; }
@@ -29,7 +29,7 @@ function metadata(key, value) {
 }
 function observed(player) {
   const result = {};
-  for (const key of ["steamId", "epicId", "discordId", "discordName", "hardwareId", "ip", "nickname"]) {
+  for (const key of ["accountId", "steamId", "epicId", "discordId", "discordName", "hardwareId", "ip", "nickname"]) {
     const value = player[key];
     if (typeof value === "string" && value.trim()) result[key] = value.trim().slice(0, key === "nickname" ? 100 : 256).trimEnd();
   }

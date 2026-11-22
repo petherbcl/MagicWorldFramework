@@ -61,10 +61,32 @@ Events.on("ms-core:notice", value => {
   Game.notify(value.text);
   if (pageReady && view !== null) Web.emit(view, "notice", { text: value.text });
 });
+// Collision switch requested by the server (Core.Players.setNoCollision). Without collision the player would fall through the
+// world, so gravity is suspended with it; they are given back in the order resetFall, setCollision(true), restoreGravity.
+// Both calls return false while there is no pawn yet: retry briefly, latest request wins.
+let collisionTimer = null, collisionWanted = true;
+function applyCollision(tries) {
+  collisionTimer = null;
+  try {
+    if (collisionWanted) { LocalPlayer.resetFall(); LocalPlayer.setCollision(true); LocalPlayer.restoreGravity(); return; }
+    const g = LocalPlayer.suspendGravity(), c = LocalPlayer.setCollision(false);
+    if ((g === false || c === false) && tries < 40) collisionTimer = setTimeout(() => applyCollision(tries + 1), 250);
+  } catch (error) { console.log("[ms-core] collision switch failed: " + (error && error.message || error)); }
+}
+function setCollision(enabled) {
+  collisionWanted = enabled;
+  if (collisionTimer !== null) { clearTimeout(collisionTimer); collisionTimer = null; }
+  applyCollision(0);
+}
+Events.on("ms-core:collision", value => {
+  if (!value || typeof value.enabled !== "boolean") return;
+  setCollision(value.enabled);
+});
 Events.on("resourceStart", name => { if (name === "ms-core") Events.emitServer("ms-core:sync"); });
 Events.on("worldReady", () => Events.emitServer("ms-core:sync"));
 Events.on("resourceStop", name => {
   if (name !== "ms-core") return;
+  if (!collisionWanted) setCollision(true);
   closeView();
   LocalPlayer.restorePlayerInput();
   Game.setPauseMenuEnabled(true);

@@ -18,7 +18,17 @@ function nativePlayer() {
 
 test("the adapter only quarantines and releases; character restore lives elsewhere", () => {
   const game = createGameAdapter(loadConfig({}));
-  assert.deepEqual(Object.keys(game).sort(), ["cancel", "kick", "release", "restrict", "send"]);
+  assert.deepEqual(Object.keys(game).sort(), ["cancel", "kick", "release", "restrict", "send", "setCollision", "setVisible"]);
+});
+
+test("effects: visibility is native, collision is sent to the player's client", () => {
+  const game = createGameAdapter(loadConfig({})), shown = [], emitted = [];
+  const player = { setVisible: v => shown.push(v), emit: (name, payload) => emitted.push([name, payload]) };
+  game.setVisible(player, false, { previous: { visible: true } });
+  game.setVisible(player, true, { previous: { visible: true } });
+  assert.deepEqual(shown, [false, true]);
+  game.setCollision(player, false);
+  assert.deepEqual(emitted, [["ms-core:collision", JSON.stringify({ enabled: false })]]);
 });
 
 test("authentication uses a fixed hold compatible with the native anchor contract", () => {

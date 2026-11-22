@@ -1,4 +1,4 @@
-/** ms-core 0.7.0 server-only API. BIGINT public IDs use decimal strings for precision. */
+/** ms-core 0.8.1 server-only API. BIGINT public IDs use decimal strings for precision. */
 export type PublicId = string;
 export type SessionStatus = "connecting" | "identifying" | "registering" | "awaitingCredentialStorage" |
   "checkingAccess" | "awaitingApproval" | "waitingForWorld" | "ready" | "closed";
@@ -35,6 +35,19 @@ export interface Core {
     getByUserId(userId: PublicId): GamePlayer | null;
     isInGame(playerId: number): boolean;
     getAll(): GamePlayer[];
+    /**
+     * Makes a ready player invisible (or visible again). Each resource passes its own `owner` (1-64 chars of `A-Za-z0-9:_.-`):
+     * the player stays invisible while at least one owner holds it. Returns whether the effect is now on. Throws `INVALID_EFFECT`
+     * (not ready, bad owner/flag) or `SESSION_EXPIRED`. Cleared automatically when the session ends.
+     */
+    setInvisible(playerId: number, owner: string, enabled: boolean): boolean;
+    /**
+     * Removes (`enabled = true`) or gives back (`false`) the player's world collision, same owner rules as `setInvisible`.
+     * Applied by the player's client together with suspended gravity, so the player floats instead of falling through the world.
+     */
+    setNoCollision(playerId: number, owner: string, enabled: boolean): boolean;
+    isInvisible(playerId: number): boolean;
+    hasNoCollision(playerId: number): boolean;
   };
   readonly Allowlist: {
     approve(userId: PublicId, actorPlayerId: number): Promise<User>;

@@ -1,6 +1,6 @@
 # ms-core
 
-Framework base do MagicSchoolRP (versão 0.7.0). Gere contas (PostgreSQL, MySQL ou MariaDB através do [ms-sql](../ms-sql/README.md)) com ID numérico, admissão no ecrã de entrada, allowlist externa, chave local, roles e bans. A especificação completa (fluxo, esquema, SQL para a aplicação do formulário, recuperação de contas) está em [docs/MS_CORE.md](../../docs/MS_CORE.md).
+Framework base do MagicSchoolRP (versão 0.8.1). Gere contas (PostgreSQL, MySQL ou MariaDB através do [ms-sql](../ms-sql/README.md)) com ID numérico, admissão no ecrã de entrada, allowlist externa, chave local, roles e bans. A especificação completa (fluxo, esquema, SQL para a aplicação do formulário, recuperação de contas) está em [docs/MS_CORE.md](../../docs/MS_CORE.md).
 
 **Fora do âmbito:** personagens. A criação, a seleção e a persistência (inventário, look e localização) ficam no recurso [ms-character](../ms-character/README.md), que depende do ms-core, abre o lobby de personagens no `ms:playerReady` e associa as personagens ao `userId`.
 
@@ -73,7 +73,7 @@ As funções que alteram dados recebem o `playerId` de quem as executa (`actorPl
 ### `Core.version`
 
 ```javascript
-Core.version; // "0.7.0"
+Core.version; // "0.8.1"
 ```
 
 ### `Core.Users`
@@ -120,6 +120,11 @@ Jogadores que já escolheram uma personagem e estão em jogo. Quem chama `enterG
 | `getByUserId(userId)` | Igual, pelo ID da conta. |
 | `isInGame(playerId)` | `true` se o jogador está em jogo. |
 | `getAll()` | Lista de todos os jogadores em jogo. |
+| `setInvisible(playerId, owner, enabled)` | (0.8.0) Torna o jogador invisível ou visível. Devolve se o efeito ficou ativo. |
+| `setNoCollision(playerId, owner, enabled)` | (0.8.0) `true` tira a colisão ao jogador, `false` devolve-a. O cliente suspende também a gravidade, para o jogador não cair do mundo. |
+| `isInvisible(playerId)` / `hasNoCollision(playerId)` | (0.8.0) Estado atual. |
+
+**Efeitos partilhados (0.8.0):** cada recurso passa o seu `owner` (por exemplo `"ms-spawn:preview"`). O efeito está ativo enquanto houver pelo menos um owner, por isso dois recursos não se anulam. Exigem sessão `ready` (`INVALID_EFFECT` caso contrário) e são repostos quando a sessão termina. Quem pede tem de os desligar com o mesmo `owner`.
 
 Os `roles` são os da personagem (tabela `ms_character_roles`; `player` é implícito) e o core relê-os a cada `MS_ACCESS_POLL_SECONDS`, por isso uma alteração de roles aparece com esse atraso. O registo desaparece quando a sessão termina.
 

@@ -135,14 +135,14 @@ for (const target of DIALECTS) describe(target.name, { skip: target.skip }, () =
 
   test("each account identifier is globally exclusive and failed registration leaves no partial account", async t => {
     const f = await fixture(t);
-    for (const kind of ["steamId", "epicId", "discordId", "hardwareId"]) {
+    for (const kind of ["accountId", "steamId", "epicId", "discordId", "hardwareId"]) {
       const value = "existing-" + kind;
       const account = await f.repository.register(null, digest("first-" + kind), { [kind]: value });
       await assert.rejects(f.repository.register(null, digest("second-" + kind), { [kind]: value }), { code: "IDENTIFIER_ALREADY_REGISTERED" });
       assert.equal((await sql.query("SELECT user_id FROM ms_connection_identifiers WHERE kind=? AND value=?", [kind, value]))[0].user_id, account.userId);
     }
     for (const table of ["ms_users", "ms_user_credentials", "ms_audit_log"]) {
-      assert.equal(Number((await sql.query(`SELECT count(*) AS n FROM ${table}`))[0].n), 4);
+      assert.equal(Number((await sql.query(`SELECT count(*) AS n FROM ${table}`))[0].n), 5);
     }
   });
 
@@ -257,6 +257,25 @@ for (const target of DIALECTS) describe(target.name, { skip: target.skip }, () =
       assert.deepEqual(f.core.api.Players.get(1).roles, ["player", "moderator"]);
       await f.repository.setRole("42", "admin", true, "console:test"); await f.core.tick();
       assert.deepEqual(f.core.api.Players.get(1).roles.sort(), ["admin", "moderator", "player"]);
+    });
+    test("shared effects: owner-keyed invisibility and collision, ready sessions only, cleared when the session ends", async t => {
+      const calls = [];
+      const g = await fixture(t, { setVisible(p, visible) { calls.push(["visible", p.id, visible]); }, setCollision(p, enabled) { calls.push(["collision", p.id, enabled]); } });
+      const P = g.core.api.Players;
+      assert.throws(() => P.setInvisible(1, "a", true), { code: "SESSION_EXPIRED" });
+      await g.register(1);
+      assert.throws(() => P.setInvisible(1, "a", true), { code: "INVALID_EFFECT" }); // not ready yet
+      await g.repository.setAllowlist(g.core.api.Users.get(1).userId, "approved", "console:test"); await g.core.tick();
+      assert.throws(() => P.setInvisible(1, "bad owner!", true), { code: "INVALID_EFFECT" });
+      assert.throws(() => P.setInvisible(1, "a", "yes"), { code: "INVALID_EFFECT" });
+      assert.equal(P.setInvisible(1, "a", true), true); assert.equal(P.setInvisible(1, "b", true), true);
+      assert.equal(P.setInvisible(1, "a", false), true); assert.equal(P.isInvisible(1), true); // b still holds it
+      assert.equal(P.setInvisible(1, "b", false), false); assert.equal(P.isInvisible(1), false);
+      assert.deepEqual(calls, [["visible", 1, false], ["visible", 1, true]]); // native call only when the effective state flips
+      assert.equal(P.setNoCollision(1, "ms-spawn:preview", true), true); assert.equal(P.hasNoCollision(1), true);
+      await g.core.disconnect(1); // ending the session gives the collision back
+      assert.deepEqual(calls.at(-1), ["collision", 1, true]);
+      assert.equal(P.hasNoCollision(1), false);
     });
     test("enterGame is idempotent for the same character and refuses another one", async t => {
       const f = await fixture(t), account = await f.ready(1), input = { sessionId: account.sessionId, characterId: "42" };
